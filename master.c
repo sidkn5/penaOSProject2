@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <sys/types.h>
@@ -34,7 +35,7 @@ int main(int argc, char *argv[]){
 	FILE *fp;
 	int countInt = 0;	//count no. of int
 	int shmid;
-	int *shmPtr;
+	char *shmPtr;
 	int newCount;		//holds the power of two count
 	key_t key;
 	char c;
@@ -52,17 +53,15 @@ int main(int argc, char *argv[]){
 		}
 	}
 
-	printf("old count %d",countInt);
+	printf("old count %d \n",countInt);
 	newCount = powerOfTwo(countInt);
-	printf("new count %d", newCount);
+	printf("new count %d \n", newCount);
 	fclose(fp);
 
 
-
-
-	/*/make shared memory
+	//make shared memory
 	key = 1234;
-	shmid = shmget(key, BUFFER_SIZE * newCount, IPC_CREAT | 0775);	
+	shmid = shmget(key, BUFFER_SIZE * newCount, IPC_CREAT | 0666);	
 	if(shmid < 0 ){
 		perror("master: Error: shmget error, creation failure.");
 		exit(1);
@@ -81,14 +80,21 @@ int main(int argc, char *argv[]){
 		perror("master: Error: There is a problem opening the file.");
 		return 0;
 	}else{
-		for(n = getc(fp); n != EOF; n = getc(fp)){
+		/*for(n = getc(fp); n != EOF; n = getc(fp)){
 			if (n != '\n'){
-				memcpy(shmPtr, c, sizeof(int));
-				//memcpy(shmPtr, c, 1);
+				//memcpy(shmPtr, n, sizeof(int));
+				memcpy(shmPtr, n, 1);
 			}
-		}
+		}*/
 	}
 	fclose(fp);
+	printf("this is id: %d", shmid);
+	memcpy(shmPtr, "Hello World",11);
+
+	char *s;
+	s = shmPtr;
+	s += 11;
+	*s = 0;
 	//////////////////////////////////////////////////////////////////////*/
 	
 
