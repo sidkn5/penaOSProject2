@@ -35,11 +35,13 @@ int main(int argc, char *argv[]){
 	FILE *fp;
 	int countInt = 0;	//count no. of int
 	int shmid;
-	char *shmPtr;
+	int *shmPtr;
 	int newCount;		//holds the power of two count
-	key_t key;
+	key_t key;		//key to the shared memory 1234
 	char c;
 	int n;
+	char padder[10];	//holds the int before transfering it to ai
+	int shmind = 0;		//shm index
 
 	fp=fopen("nums.txt", "r");
 	if (fp == NULL){
@@ -59,43 +61,62 @@ int main(int argc, char *argv[]){
 	fclose(fp);
 
 
-	//make shared memory
-	key = 1234;
-	shmid = shmget(key, BUFFER_SIZE * newCount, IPC_CREAT | 0666);	
+	////////////////make shared memory///////////////////////////////////
+	key = ftok("./README.md", 'a');
+
+	printf("key  %d \n", key);
+	shmid = shmget(key, BUFFER_SIZE * newCount, IPC_CREAT | 0666);
 	if(shmid < 0 ){
 		perror("master: Error: shmget error, creation failure.");
 		exit(1);
 	}
-
+	printf("shmid %d\n", shmid);
 	//attach to shared memory
 	shmPtr = shmat(shmid, NULL, 0);
-	if (shmPtr == (char *) -1){
+	if (shmPtr == (int *) -1){
 		perror("master: Error: smat error, attachment failure.");
 		exit(1);
 	}
 	
-	//open file and transfer to shared memory
+	//open file and transfer ints to shared memory
 	fp=fopen("nums.txt", "r");
 	if (fp == NULL){
 		perror("master: Error: There is a problem opening the file.");
 		return 0;
 	}else{
-		/*for(n = getc(fp); n != EOF; n = getc(fp)){
-			if (n != '\n'){
-				//memcpy(shmPtr, n, sizeof(int));
-				memcpy(shmPtr, n, 1);
+		while((c =fgetc(fp)) != EOF){
+			if(c != '\n'){
+				//printf("padder %d\n",c);
+				padder[n] = c;
+				n++;
+
+			} else {
+				padder[n] = '\0';
+				//reads the padder and converts the string to an int
+				shmPtr[shmind] = atoi(padder);
+				shmind++;
+				n = 0;
 			}
-		}*/
+		}
+
+	}		
+	
+	//set the rest to zeros
+	for(countInt; countInt < newCount; countInt++){
+		shmPtr[shmind] = 0;
+		shmind++;
 	}
 	fclose(fp);
-	printf("this is id: %d", shmid);
-	memcpy(shmPtr, "Hello World",11);
 
-	char *s;
-	s = shmPtr;
-	s += 11;
-	*s = 0;
-	//////////////////////////////////////////////////////////////////////*/
+	for(shmind = 0; shmind < newCount; shmind++){
+		printf("shmptr: %d\n",shmPtr[shmind]);
+	}
+	//printf("this is id: %d", shmid);
+	//memcpy(shmPtr, "Hello World",11);
+	//
+	//shmctl(shmid, IPC_RMID, 0);
+
+	/////////////////////////////////////////////////////////////////////*/
 	
 
 	/*while((option = getopt(argc, argv, "hst:")) != 1){
@@ -116,6 +137,4 @@ int main(int argc, char *argv[]){
 	}*/
 
 	
-	//printf("count %d", countInt);
-
 }
