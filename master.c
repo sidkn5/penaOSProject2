@@ -6,6 +6,7 @@
 #include <sys/shm.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <math.h>
 #define BUFFER_SIZE sizeof(int)
 
 
@@ -20,11 +21,13 @@ void help(){
 }
 void ctrlC(){
 	printf("Process terminated.\n");
+	//don't forget to add kill and free all later 
 	exit(0);
 }
 
 void timesUp(){
 	printf("The time given is up. Process will termintate.\n");
+	//don't forget to add kill and free all later 
 	exit(0);
 }
 
@@ -37,6 +40,11 @@ int powerOfTwo(int n){
 		}
 		return n;
 	}
+}
+
+int getDepth(int n){
+	int depth = log(n) / log(2);
+	return depth;
 }
 /*
 int countIntFile(){
@@ -71,7 +79,7 @@ int main(int argc, char *argv[]){
 	int n;
 	char padder[10];	//holds the int before transfering it to ai
 	int shmind = 0;		//shm index
-
+	int depth = 0;		//depth of the tree, get using log2
 
 	//Signals
 	signal(SIGINT, ctrlC);
@@ -189,6 +197,33 @@ int main(int argc, char *argv[]){
 	for(shmind = 0; shmind < newCount; shmind++){
 		printf("shmptr: %d\n",shmPtr[shmind]);
 	}
+
+
+	depth = getDepth(newCount);
+	printf("depth %d\n", depth);
+	shmind = 0;
+	//needed because execl doesn't take int
+	char shmind1[10];
+	char depth1[10];
+	char newCount1[10];
+	depth = 2;
+	sprintf(shmind1, "%d", shmind);
+	sprintf(depth1, "%d", depth);
+	sprintf(newCount1, "%d", newCount);
+
+/*/doesn't work
+	int x;
+	int i;
+	for (i = depth; i > 0; i--){
+	sprintf(depth1, "%d", i);
+	for(x = 0; x < newCount; x+2){
+		int forkID = fork();
+		if(forkID == 0){
+			execl("./bin_adder", "./bin_adder", shmind1, depth1, newCount1, NULL);
+		}
+	}
+}*/
+	printf("total sum %d\n", shmPtr[0]);
 	///////////////////////////////////////////////////////////////////////
 	/* TRYING OUT FORK
 	int forkID = fork();
