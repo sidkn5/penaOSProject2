@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <sys/types.h>
-
+#include <unistd.h>
 #define BUFFER_SIZE sizeof(int)
 
 
@@ -17,6 +18,15 @@ void help(){
 	printf("Help: \n");
 
 }
+void ctrlC(){
+	printf("Process terminated.\n");
+	exit(0);
+}
+
+void timesUp(){
+	printf("The time given is up. Process will termintate.\n");
+	exit(0);
+}
 
 int powerOfTwo(int n){
 	if(n>0 && !(n & (n-1))){
@@ -28,21 +38,11 @@ int powerOfTwo(int n){
 		return n;
 	}
 }
-
-int main(int argc, char *argv[]){
-	int option;		//option used by the user
-	int noOfChildren;	//no. of children using the s option
-	FILE *fp;
-	int countInt = 0;	//count no. of int
-	int shmid;
-	int *shmPtr;
-	int newCount;		//holds the power of two count
-	key_t key;		//key to the shared memory 1234
+/*
+int countIntFile(){
+	int countInt = 0;
 	char c;
-	int n;
-	char padder[10];	//holds the int before transfering it to ai
-	int shmind = 0;		//shm index
-
+	FILE *fp;
 	fp=fopen("nums.txt", "r");
 	if (fp == NULL){
 		perror("master: Error: There is a problem opening the file.");
@@ -54,12 +54,84 @@ int main(int argc, char *argv[]){
 			}
 		}
 	}
+	fclose(fp);
+	return countInt;
+}*/
+int main(int argc, char *argv[]){
+	int option;		//option used by the user
+	int noOfChildren = 20;	//no. of children using the s option 20 default
+	int timeTermination = 100; //time given until termination 100 default
+	FILE *fp1;
+	int countInt = 0;	//count no. of int
+	int shmid;
+	int *shmPtr;
+	int newCount;		//holds the power of two count
+	key_t key;		//key to the shared memory 1234
+	char c;
+	int n;
+	char padder[10];	//holds the int before transfering it to ai
+	int shmind = 0;		//shm index
 
+
+	//Signals
+	signal(SIGINT, ctrlC);
+	signal(SIGALRM, timesUp);
+	
+	///////////////////////////////////////////////////////////////////////
+	
+	//open file and count the number of int
+	
+
+	fp1=fopen("nums.txt", "r");
+	if (fp1 == NULL){
+		perror("master: Error: There is a problem opening the file.");
+		return 0;
+	}else{
+		for(c = getc(fp1); c != EOF; c = getc(fp1)){
+			if (c == '\n'){
+				countInt++;
+			}
+		}
+	}
+	fclose(fp1);
+	//countInt = 12;
+	//countInt = countIntFile();
 	printf("old count %d \n",countInt);
 	newCount = powerOfTwo(countInt);
 	printf("new count %d \n", newCount);
-	fclose(fp);
 
+	/////////////////////////////////////////////////////////////////////
+	
+	//getopt for options
+	printf("before while\n");	
+	while((option = getopt(argc, argv, "hs:t:")) != -1){
+		switch(option){
+			case 'h':
+				help();
+				break;
+
+			case 's':
+				noOfChildren = atoi(optarg);
+				printf("no of children %d\n", noOfChildren);
+				break;
+
+			case 't':
+				timeTermination = atoi(optarg);
+				printf("time %d\n", timeTermination);
+				alarm(timeTermination);
+				break;
+
+			default:
+				printf("Please refer to the help menu for proper use.\n");
+				exit(0);
+
+		}
+
+	}
+	printf("after while\n");	
+	//sleep(10);		test the alarm
+	/////////////////////////////////////////////////////////////////////
+	
 
 	////////////////make shared memory///////////////////////////////////
 	key = ftok("./README.md", 'a');
@@ -77,14 +149,18 @@ int main(int argc, char *argv[]){
 		perror("master: Error: smat error, attachment failure.");
 		exit(1);
 	}
+
+	/////////////////////////////////////////////////////////////////////
 	
+	//set up the array and add 0s
 	//open file and transfer ints to shared memory
-	fp=fopen("nums.txt", "r");
-	if (fp == NULL){
+	fp1=fopen("nums.txt", "r");
+	if (fp1 == NULL){
 		perror("master: Error: There is a problem opening the file.");
 		return 0;
 	}else{
-		while((c =fgetc(fp)) != EOF){
+		while((c =getc(fp1)) != EOF){
+			
 			if(c != '\n'){
 				//printf("padder %d\n",c);
 				padder[n] = c;
@@ -99,42 +175,36 @@ int main(int argc, char *argv[]){
 			}
 		}
 
-	}		
+	}	
+
+
 	
 	//set the rest to zeros
 	for(countInt; countInt < newCount; countInt++){
 		shmPtr[shmind] = 0;
 		shmind++;
 	}
-	fclose(fp);
+	fclose(fp1);
 
 	for(shmind = 0; shmind < newCount; shmind++){
 		printf("shmptr: %d\n",shmPtr[shmind]);
 	}
-	//printf("this is id: %d", shmid);
-	//memcpy(shmPtr, "Hello World",11);
+	///////////////////////////////////////////////////////////////////////
+	/* TRYING OUT FORK
+	int forkID = fork();
+	if(forkID == 0){
+	}else{
+		printf("I'm in bin adder. \n");
+	}
+	for(shmind = 0; shmind < newCount; shmind++){
+		printf("shmptr: %d\n",shmPtr[shmind]);
+	}
 	//
 	//shmctl(shmid, IPC_RMID, 0);
 
 	/////////////////////////////////////////////////////////////////////*/
 	
-
-	/*while((option = getopt(argc, argv, "hst:")) != 1){
-		switch(option){
-			case 'h':
-			help();
-			break;
-
-			case 's':
-			//noOfChildren = optarg;
-			sOption();
-			break;
-
-			case 't'"
-
-		}
-
-	}*/
-
+	shmctl(shmid, IPC_RMID, NULL);
+	return 0;
 	
 }
